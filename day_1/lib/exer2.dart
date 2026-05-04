@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+enum RecordingState { stopped, recording, paused }
 
 class Exer2 extends StatefulWidget {
   const Exer2({super.key});
@@ -13,57 +16,116 @@ class Exer2 extends StatefulWidget {
 
 class _Exer2State extends State<Exer2> {
   Directory? documents;
-  Directory? cache;
-  Directory? temp;
+  final Stopwatch stopwatch = Stopwatch();
+  Timer? timer;
+  Duration elapsed = Duration.zero;
+  List<FileSystemEntity> recordings = [];
 
-  FlutterSoundRecorder flutterSoundRecorder = FlutterSoundRecorder();
-  bool recording = false;
+  RecordingState recordingState = RecordingState.stopped;
 
-  void startRec() async {
-    setState(() {
-      recording = true;
+  final FlutterSoundRecorder recorder = FlutterSoundRecorder();
+
+  void startTimer() {
+    stopwatch.start();
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          elapsed = stopwatch.elapsed;
+        });
+      }
     });
+  }
 
+  Future<void> loadRecordings() async {
+    documents ??= await getApplicationDocumentsDirectory();
+
+    final files = documents!
+        .listSync()
+        .where((f) => f.path.endsWith('.aac'))
+        .toList();
+
+    setState(() {
+      recordings = files;
+    });
+  }
+
+  void pauseTimer() {
+    stopwatch.stop();
+    timer?.cancel();
+  }
+
+  void resetTimer() {
+    stopwatch
+      ..stop()
+      ..reset();
+    timer?.cancel();
+    setState(() {
+      elapsed = Duration.zero;
+    });
+  }
+
+  Future<void> startRecording() async {
     try {
       final micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) throw Exception("Mic permission denied");
-      documents = documents ?? await getApplicationDocumentsDirectory();
+      if (!micStatus.isGranted) {
+        throw Exception("Permissão de microfone negada");
+      }
+
+      documents ??= await getApplicationDocumentsDirectory();
       final path =
-          "${documents!.path}/audio${DateTime.now().millisecondsSinceEpoch.toString()}.aac";
-      setState(() {
-        recording = true;
-      });
+          "${documents!.path}/audio${DateTime.now().millisecondsSinceEpoch}.aac";
 
-      await flutterSoundRecorder.openRecorder();
-      await flutterSoundRecorder.startRecorder(
-        toFile: path,
-        codec: Codec.aacADTS,
-      );
+      await recorder.openRecorder();
+      await recorder.startRecorder(toFile: path, codec: Codec.aacADTS);
 
-      await Future.delayed(Duration(seconds: 5));
-      final stop = await flutterSoundRecorder.stopRecorder();
-
-      if (!mounted) return;
-
-      setState(() {
-        recording = false;
-      });
-      final exist = await File(stop!).exists();
-      mounted
-          ? toast("$exist | ${File(stop).lengthSync().toString()}", context)
-          : null;
+      setState(() => recordingState = RecordingState.recording);
+      resetTimer();
+      startTimer();
     } catch (e) {
-      setState(() {
-        recording = false;
-      });
-      throw Exception(e);
+      if (mounted) toastError('Erro ao iniciar: $e', context);
+    }
+  }
+
+  Future<void> pauseRecording() async {
+    await recorder.pauseRecorder();
+    pauseTimer();
+    setState(() => recordingState = RecordingState.paused);
+  }
+
+  Future<void> resumeRecording() async {
+    await recorder.resumeRecorder();
+    startTimer();
+    setState(() => recordingState = RecordingState.recording);
+  }
+
+  Future<void> stopRecording() async {
+    final path = await recorder.stopRecorder();
+    resetTimer();
+    setState(() => recordingState = RecordingState.stopped);
+
+    if (path != null && mounted) {
+      final size = File(path).lengthSync();
+      toast("Salvo! Tamanho: $size bytes", context);
     }
   }
 
   @override
+  void initState() {
+    super.initState();
+    loadRecordings();
+  }
+
+  @override
   void dispose() {
-    flutterSoundRecorder.closeRecorder();
+    recorder.closeRecorder();
+    timer?.cancel();
     super.dispose();
+  }
+
+  String get formattedElapsed {
+    final m = elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   @override
@@ -108,18 +170,50 @@ class _Exer2State extends State<Exer2> {
                 },
                 disable: false,
               ),
-              Exercise(
-                name: "2.2 - Record 5s, save on Documents",
-                function: () async {
-                  try {
-                    startRec();
-                  } catch (e) {
-                    context.mounted
-                        ? toastError('Cannot record: $e', context)
-                        : null;
-                  }
-                },
-                disable: recording,
+              Column(
+                children: [
+                  Exercise(
+                    name: "2.2 - Record 5s, save on Documents",
+                    function: () async {
+                      if (recordingState == RecordingState.stopped) {
+                        await startRecording();
+                      } else {
+                        await stopRecording();
+                        await loadRecordings();
+                      }
+                    },
+                    disable: false,
+                  ),
+                  if (recordingState != RecordingState.stopped)
+                    Text(
+                      formattedElapsed,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Histórico (.aac)",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      ...recordings.map((file) {
+                        final name = file.path.split('/').last;
+                        final size = File(file.path).lengthSync();
+
+                        return ListTile(
+                          title: Text(name),
+                          subtitle: Text("$size bytes"),
+                        );
+                      }),
+                    ],
+                  ),
+                ],
               ),
 
               Container(
