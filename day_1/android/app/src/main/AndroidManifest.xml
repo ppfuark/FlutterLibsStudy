@@ -42,9 +42,10 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
-    <uses-permission android:name="android.persmission.INTERNET"/>
-    <uses-permission android:name="android.persmission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.persmission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.persmission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.persmission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.CAMERA" />
 </manifest>
