@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:day_1/exer4.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,6 +21,7 @@ class _Exer3State extends State<Exer3> {
   bool showCamera = false;
   int camera = 0;
   bool saveOnDoc = false;
+  bool maxRes = true;
 
   Future<void> startApp() async {
     cameras = await availableCameras();
@@ -32,7 +34,7 @@ class _Exer3State extends State<Exer3> {
     await cameraController.dispose();
     cameraController = CameraController(
       cameras[newIndex],
-      ResolutionPreset.max,
+      maxRes ? ResolutionPreset.max : ResolutionPreset.low,
     );
     await cameraController.initialize();
 
@@ -214,6 +216,7 @@ class _Exer3State extends State<Exer3> {
                             setState(() {
                               showCamera = true;
                               saveOnDoc = false;
+                              maxRes = true;
                             });
                           }
                         } catch (e) {
@@ -287,6 +290,7 @@ class _Exer3State extends State<Exer3> {
                             setState(() {
                               showCamera = true;
                               saveOnDoc = true;
+                              maxRes = true;
                             });
                           }
                         } catch (e) {
@@ -295,6 +299,59 @@ class _Exer3State extends State<Exer3> {
                               : null;
                         }
                       },
+                    ),
+                    Exercise(
+                      name:
+                          '3.4 - Open camera, take and save picture with low resolution',
+                      function: () async {
+                        try {
+                          final permission = await Permission.camera.request();
+                          if (!permission.isGranted) {
+                            context.mounted
+                                ? toastError(
+                                    "Permissão de camera não garantida.",
+                                    context,
+                                  )
+                                : null;
+                          } else {
+                            setState(() {
+                              showCamera = true;
+                              saveOnDoc = true;
+                              maxRes = false;
+                            });
+                          }
+                        } catch (e) {
+                          context.mounted
+                              ? toastError("Erro ao tirar foto: $e", context)
+                              : null;
+                        }
+                      },
+                    ),
+                    Container(
+                      width: double.infinity,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(99),
+                        color: Colors.indigo,
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => Exer4()),
+                          );
+                        },
+                        child: Center(
+                          child: Text(
+                            "Next exercise",
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
