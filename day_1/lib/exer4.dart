@@ -1,3 +1,4 @@
+import 'package:day_1/final_project.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -120,6 +121,32 @@ class _Exer4State extends State<Exer4> {
                         : null;
                   }
                 },
+              ),
+              Container(
+                width: double.infinity,
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(99),
+                  color: Colors.indigo,
+                ),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => FinalProject()),
+                    );
+                  },
+                  child: Center(
+                    child: Text(
+                      "Next exercise",
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
