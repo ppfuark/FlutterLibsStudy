@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class Exer3 extends StatefulWidget {
@@ -153,6 +154,7 @@ class _Exer3State extends State<Exer3> {
               )
             : SingleChildScrollView(
                 child: Column(
+                  spacing: 20,
                   children: [
                     Exercise(
                       name: '3.1 - Open camera, take and show picture',
@@ -174,6 +176,54 @@ class _Exer3State extends State<Exer3> {
                         } catch (e) {
                           context.mounted
                               ? toastError("Erro ao tirar foto: $e", context)
+                              : null;
+                        }
+                      },
+                    ),
+                    Exercise(
+                      name:
+                          '3.2 - Open gallery and display image, error handling',
+                      function: () async {
+                        try {
+                          final ImagePicker imagePicker = ImagePicker();
+                          final imageFile = await imagePicker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (!context.mounted) return;
+                          imageFile != null
+                              ? Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => Stack(
+                                      children: [
+                                        Positioned.fill(
+                                          child: Image.file(
+                                            fit: BoxFit.contain,
+                                            File(imageFile.path),
+                                          ),
+                                        ),
+                                        Align(
+                                          alignment: AlignmentGeometry.topRight,
+                                          child: IconButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            icon: Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 40,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : toastError("Imagem não selecionada", context);
+                        } catch (e) {
+                          print(e);
+                          context.mounted
+                              ? toastError("Erro ao escolher foto: $e", context)
                               : null;
                         }
                       },
