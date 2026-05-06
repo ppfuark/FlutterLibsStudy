@@ -82,6 +82,45 @@ class _Exer4State extends State<Exer4> {
                   }
                 },
               ),
+              Exercise(
+                name: "4.3 - File picker for multiple files",
+                function: () async {
+                  try {
+                    FilePickerResult? result = await FilePicker.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['mp3', 'aac', 'm4a'],
+                    );
+                    if (result != null) {
+                      List<PlatformFile> files = result.files;
+
+                      if (context.mounted) {
+                        for (var file in files) {
+                          toast(
+                            "${(files.indexOf(file) + 1).toString()}. Arquivo selecionado: ${file.name}",
+                            context,
+                          );
+                          toast(
+                            "${(files.indexOf(file) + 1).toString()}. Arquivo selecionado: ${file.size.toString()}",
+                            context,
+                          );
+                          toast(
+                            "${(files.indexOf(file) + 1).toString()}. Arquivo selecionado: ${file.path}",
+                            context,
+                          );
+                        }
+                      }
+                    } else {
+                      context.mounted
+                          ? toastError("Seleção de arquivo cancelada", context)
+                          : null;
+                    }
+                  } catch (e) {
+                    context.mounted
+                        ? toastError("Erro na seleção de arquivo: $e", context)
+                        : null;
+                  }
+                },
+              ),
             ],
           ),
         ),
