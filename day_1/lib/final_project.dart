@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +23,10 @@ class _FinalProjectState extends State<FinalProject> {
   late CameraController cameraController;
   Directory? documents;
   RecordingState recordingState = RecordingState.stopped;
+  String? time;
+  Timer? timer;
+  Stopwatch stopwatch = Stopwatch();
+  Duration elapsed = Duration.zero;
 
   Future<void> startApp() async {
     cameras = await availableCameras();
@@ -38,18 +44,56 @@ class _FinalProjectState extends State<FinalProject> {
       await flutterSoundRecorder.openRecorder();
 
       documents = await getApplicationDocumentsDirectory();
-      final path =
-          "${documents!.path}/audio/${DateTime.now().millisecondsSinceEpoch}.mp3";
+      time = DateTime.now().millisecondsSinceEpoch.toString();
+      final dir = Directory("${documents!.path}/audio");
+      if (!dir.existsSync()) {
+        await dir.create(recursive: true);
+      }
+      final path = "${documents!.path}/audio/$time.aac";
 
-      await flutterSoundRecorder.openRecorder();
-      await flutterSoundRecorder.startRecorder(toFile: path, codec: Codec.mp3);
+      await flutterSoundRecorder.startRecorder(
+        toFile: path,
+        codec: Codec.aacADTS,
+      );
+
+      stopwatch.stop();
+      stopwatch.reset();
+      timer?.cancel();
+      setState(() {
+        elapsed = Duration.zero;
+      });
 
       setState(() {
         recordingState = RecordingState.recording;
       });
+
+      stopwatch.start();
+      timer = Timer.periodic(Durations.medium1, (_) {
+        setState(() {
+          elapsed = stopwatch.elapsed;
+        });
+      });
     } catch (e) {
       mounted ? toastError("Erro ao iniciar: $e", context) : null;
     }
+  }
+
+  Future<void> chosePhoto() async {
+    return showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        actions: [
+          CupertinoActionSheetAction(onPressed: () {}, child: Text("Camera")),
+          CupertinoActionSheetAction(onPressed: () {}, child: Text("Gallery")),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: Text("Cancel"),
+        ),
+      ),
+    );
   }
 
   Future<void> pauseRecording() async {
@@ -57,12 +101,20 @@ class _FinalProjectState extends State<FinalProject> {
     setState(() {
       recordingState = RecordingState.paused;
     });
+    stopwatch.stop();
+    timer?.cancel();
   }
 
   Future<void> resumeRecording() async {
     await flutterSoundRecorder.resumeRecorder();
     setState(() {
       recordingState = RecordingState.recording;
+    });
+    stopwatch.start();
+    timer = Timer.periodic(Durations.medium1, (_) {
+      setState(() {
+        elapsed = stopwatch.elapsed;
+      });
     });
   }
 
@@ -71,12 +123,26 @@ class _FinalProjectState extends State<FinalProject> {
     setState(() {
       recordingState = RecordingState.stopped;
     });
+    stopwatch.stop();
+    stopwatch.reset();
+    timer?.cancel();
+    setState(() {
+      elapsed = Duration.zero;
+    });
+
+    chosePhoto();
   }
 
   @override
   void initState() {
     super.initState();
     startApp();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    flutterSoundRecorder.closeRecorder();
   }
 
   @override
@@ -92,7 +158,10 @@ class _FinalProjectState extends State<FinalProject> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("00:00", style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),),
+            Text(
+              "${elapsed.inHours.toString().padLeft(2, '0')}:${(elapsed.inMinutes % 60).toString().padLeft(2, '0')}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}",
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -108,7 +177,13 @@ class _FinalProjectState extends State<FinalProject> {
                         color: Colors.grey.shade200,
                       ),
                       child: IconButton(
-                        onPressed: () async {},
+                        onPressed: () async {
+                          recordingState == RecordingState.recording
+                              ? stopRecording()
+                              : recordingState == RecordingState.paused
+                              ? stopRecording()
+                              : null;
+                        },
                         icon: Icon(Icons.stop, size: 30, color: Colors.red),
                       ),
                     ),
@@ -126,11 +201,24 @@ class _FinalProjectState extends State<FinalProject> {
                         color: Colors.grey.shade200,
                       ),
                       child: IconButton(
-                        onPressed: () async {},
-                        icon: Icon(Icons.mic_sharp, size: 50),
+                        onPressed: () async {
+                          recordingState == RecordingState.recording
+                              ? pauseRecording()
+                              : startRecording();
+                        },
+                        icon: Icon(
+                          recordingState == RecordingState.paused
+                              ? Icons.pause
+                              : Icons.mic_sharp,
+                          size: 50,
+                        ),
                       ),
                     ),
-                    Text("Recording"),
+                    Text(
+                      recordingState == RecordingState.paused
+                          ? "Paused"
+                          : "Recording",
+                    ),
                   ],
                 ),
                 Column(
