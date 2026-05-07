@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
@@ -78,13 +79,45 @@ class _FinalProjectState extends State<FinalProject> {
     }
   }
 
-  Future<void> chosePhoto() async {
+  Future<void> chosePhoto(String time) async {
     return showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
         actions: [
-          CupertinoActionSheetAction(onPressed: () {}, child: Text("Camera")),
-          CupertinoActionSheetAction(onPressed: () {}, child: Text("Gallery")),
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              
+            },
+            child: Text("Camera"),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                FilePickerResult? result = await FilePicker.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['jpeg', 'png', 'jpg'],
+                );
+                if (result != null) {
+                  PlatformFile file = result.files.first;
+                  final dir = await getApplicationDocumentsDirectory();
+                  final path = "${dir.path}/images";
+                  await File(file.path!).copy(path);
+                  if (!context.mounted) return;
+                  toast("Arquivos salvos com sucesso!", context);
+                } else {
+                  if (!context.mounted) return;
+                  toastError("Cancelado pelo o usuário.", context);
+                }
+              } catch (e) {
+                if (!context.mounted) return;
+                toastError("Erro na escolha de capa: $e", context);
+                await Future.delayed(Duration(seconds: 2));
+                chosePhoto(time);
+              }
+            },
+            child: Text("Gallery"),
+          ),
         ],
         cancelButton: CupertinoActionSheetAction(
           onPressed: () {
@@ -130,7 +163,7 @@ class _FinalProjectState extends State<FinalProject> {
       elapsed = Duration.zero;
     });
 
-    chosePhoto();
+    chosePhoto(time ?? DateTime.now().millisecondsSinceEpoch.toString());
   }
 
   @override
